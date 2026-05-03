@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>ChatZ</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <style>
+        :root { --bg: #0a1628; --card: #152240; --input: #1a2d4a; --header: #0f1d33; --text: #e8e8f0; --gray: #8899aa; --gold: #f5c542; --green: #1a8a3f; --blue: #1a5faa; --red: #aa1a1a; --online: #1a8a3f; }
+        .light { --bg: #f0f0f5; --card: #ffffff; --input: #e8e8ee; --header: #ffffff; --text: #1a1a1a; --gray: #666; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; max-width: 500px; margin: 0 auto; }
+        input, textarea { -webkit-user-select: text; user-select: text; }
+        .header { padding: 12px 16px; background: var(--header); color: var(--gold); font-weight: bold; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
+        .content { flex: 1; overflow-y: auto; padding: 12px; }
+        .msg { padding: 10px 14px; margin: 6px 0; background: var(--card); border-radius: 12px; font-size: 14px; position: relative; }
+        .msg img { max-width: 100%; max-height: 300px; border-radius: 8px; margin-top: 6px; display: block; }
+        .reply-preview { background: var(--input); padding: 8px 12px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; color: var(--gray); cursor: pointer; display: none; }
+        .reply-preview .close { float: right; cursor: pointer; color: var(--red); }
+        .online-dot { width: 8px; height: 8px; background: var(--online); border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .input-box { display: flex; padding: 10px 12px; background: var(--header); gap: 6px; align-items: center; }
+        .input-box input { flex: 1; min-width: 120px; padding: 12px 16px; border: none; border-radius: 24px; background: var(--input); color: var(--text); font-size: 16px; outline: none; }
+        .input-box button { width: 40px; height: 40px; border: none; border-radius: 50%; color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .card { background: var(--card); border-radius: 12px; padding: 16px; margin: 8px 0; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 22px; color: #fff; flex-shrink: 0; }
+        .btn { padding: 12px 20px; border: none; border-radius: 10px; font-weight: bold; font-size: 14px; cursor: pointer; width: 100%; margin: 4px 0; color: #fff; }
+        .btn-green { background: var(--green); } .btn-blue { background: var(--blue); } .btn-red { background: var(--red); }
+        input { width: 100%; padding: 12px 14px; margin: 6px 0; background: var(--input); border: none; border-radius: 10px; color: var(--text); font-size: 16px; outline: none; }
+        .text-gold { color: var(--gold); } .text-gray { color: var(--gray); font-size: 12px; } .text-center { text-align: center; } .time { color: var(--gray); font-size: 10px; }
+        .tab-bar { display: flex; background: var(--header); padding: 6px 0; }
+        .tab { flex: 1; text-align: center; padding: 8px; color: var(--gray); font-size: 11px; cursor: pointer; }
+        .tab.active { color: var(--blue); font-weight: bold; }
+        .chat-row { display: flex; align-items: center; padding: 12px; background: var(--card); border-radius: 12px; margin: 6px 0; cursor: pointer; gap: 12px; }
+        .chat-info { flex: 1; }
+        .theme-btn { position: fixed; top: 10px; right: 10px; z-index: 200; background: var(--card); border: none; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 50%; }
+        .popup-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; overflow: auto; -webkit-overflow-scrolling: touch; }
+        .popup-box { background: var(--bg); padding: 20px; border-radius: 16px; width: 90%; margin: 60px auto; }
+    </style>
+</head>
+<body onload="appInit()">
+
+<button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌓</button>
+
+<div id="screen-first" style="display:none; flex-direction:column; height:100vh;">
+    <div class="header">⚡ ChatZ</div>
+    <div class="content" style="text-align:center; padding-top:40px;">
+        <div class="avatar" style="width:80px;height:80px;font-size:36px;margin:20px auto;background:var(--gold);color:#000;">Z</div>
+        <h2 class="text-gold">Создание профиля</h2>
+        <p class="text-gray">Только один раз</p>
+        <div class="card" style="text-align:left;">
+            <p class="text-gray">ПОЗЫВНОЙ</p>
+            <input id="firstInput" placeholder="Ваш позывной">
+            <p id="firstError" style="color:#f55;font-size:12px;"></p>
+            <button class="btn btn-green" onclick="createProfile()">💾 СОЗДАТЬ</button>
+        </div>
+    </div>
+</div>
+
+<div id="screen-chats" style="display:none; flex-direction:column; height:100vh;">
+    <div class="header"><span>⚡ ChatZ</span><span id="onlineCount" class="text-gray" style="font-size:11px;"></span></div>
+    <div class="content" id="chatList"></div>
+    <div style="padding:8px 12px;"><button class="btn btn-green" onclick="showPopup()">+ НОВАЯ ГРУППА</button></div>
+    <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('chats')">💬 Чаты</div>
+        <div class="tab" onclick="switchTab('contacts')">👥 Контакты</div>
+        <div class="tab" onclick="switchTab('profile')">👤 Профиль</div>
+    </div>
+</div>
+
+<div id="screen-contacts" style="display:none; flex-direction:column; height:100vh;">
+    <div class="header">👥 Контакты</div>
+    <div class="content" id="contactsList"><p class="text-gray text-center">Загрузка...</p></div>
+    <div class="tab-bar">
+        <div class="tab" onclick="switchTab('chats')">💬 Чаты</div>
+        <div class="tab active" onclick="switchTab('contacts')">👥 Контакты</div>
+        <div class="tab" onclick="switchTab('profile')">👤 Профиль</div>
+    </div>
+</div>
+
+<div id="screen-profile" style="display:none; flex-direction:column; height:100vh;">
+    <div class="header">👤 Профиль</div>
+    <div class="content" style="text-align:center;">
+        <div class="avatar" style="width:80px;height:80px;font-size:36px;margin:20px auto;background:var(--gold);color:#000;">Z</div>
+        <h3 id="profileName"></h3>
+        <p class="text-gray" id="profileId"></p>
+        <div class="card" style="text-align:left;">
+            <p class="text-gray">ПОЗЫВНОЙ</p>
+            <input id="editNameInput" disabled>
+            <p class="text-gray">✅ Сохранён</p>
+        </div>
+    </div>
+    <div class="tab-bar">
+        <div class="tab" onclick="switchTab('chats')">💬 Чаты</div>
+        <div class="tab" onclick="switchTab('contacts')">👥 Контакты</div>
+        <div class="tab active" onclick="switchTab('profile')">👤 Профиль</div>
+    </div>
+</div>
+
+<div id="screen-chat" style="display:none; flex-direction:column; height:100vh;">
+    <div class="header">
+        <span onclick="backToChats()" style="cursor:pointer;">← Назад</span>
+        <span id="chatTitle">Чат</span>
+        <span onclick="sendPhoto()" style="cursor:pointer;">📷</span>
+    </div>
+    <div class="reply-preview" id="replyPreview">
+        <span id="replyText"></span>
+        <span class="close" onclick="cancelReply()">✕</span>
+    </div>
+    <div class="content" id="messages"></div>
+    <div class="input-box">
+        <button onclick="sendPhoto()" style="background:var(--blue);">📷</button>
+        <input id="msgInput" placeholder="Сообщение..." style="font-size:16px;">
+        <button onclick="sendMsg()" style="background:var(--green);">▶</button>
+    </div>
+</div>
+
+<div class="popup-overlay" id="popup">
+    <div class="popup-box">
+        <h3 class="text-gold">Новая группа</h3>
+        <input id="popupGid" placeholder="ID группы" autocomplete="off" style="font-size:16px;">
+        <input id="popupPw" type="password" placeholder="Пароль" autocomplete="off" style="font-size:16px;">
+        <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-green" onclick="addGroup()">ДОБАВИТЬ</button>
+            <button class="btn btn-red" onclick="hidePopup()">ОТМЕНА</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = "https://api.telegram.org/bot8644995124:AAEN54v4xJYBWa8FhrPjCZ5gAbmlUdL5oD8";
+const CHAT = "-1003920364372";
+let username = "", gid = "", pw = "", loadInterval, dbKey = "";
+let phoneId = "web_" + Math.random().toString(36).slice(2, 10);
+let replyTo = null;
+let onlineUsers = {};
+
+function appInit() {
+    try { phoneId = localStorage.getItem("chatz_phoneid") || phoneId; localStorage.setItem("chatz_phoneid", phoneId); } catch(e) {}
+    username = localStorage.getItem("chatz_profile") || "";
+    if(!username) { document.getElementById("screen-first").style.display = "flex"; document.getElementById("profileId").textContent = "ID: " + phoneId; }
+    else {
+        dbKey = CryptoJS.SHA256(username + "_dbkey").toString();
+        document.getElementById("profileName").textContent = username;
+        document.getElementById("editNameInput").value = username;
+        document.getElementById("profileId").textContent = "ID: " + phoneId;
+        switchTab("chats");
+    }
+    refreshChatList(); loadContacts();
+    setTimeout(() => document.querySelectorAll('input').forEach(inp => inp.addEventListener('touchstart', function() { this.focus(); })), 500);
+}
+
+function toggleTheme() { document.body.classList.toggle('light'); localStorage.setItem("chatz_theme", document.body.classList.contains('light') ? "light" : "dark"); }
+if(localStorage.getItem("chatz_theme") === "light") document.body.classList.add('light');
+
+function updateOnlineStatus() {
+    onlineUsers[phoneId] = Date.now();
+    let count = Object.values(onlineUsers).filter(t => Date.now() - t < 30000).length;
+    document.getElementById("onlineCount").textContent = count > 1 ? `🟢 ${count} в сети` : "";
+    fetch(API+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CHAT,text:encrypt("ONLINE:"+phoneId+":"+username,"onlinedb")})}).catch(e=>{});
+}
+setInterval(updateOnlineStatus, 15000); updateOnlineStatus();
+
+function createProfile() {
+    let name = document.getElementById("firstInput").value.trim();
+    if(name.length < 2) { document.getElementById("firstError").textContent = "Минимум 2 символа!"; return; }
+    username = name; localStorage.setItem("chatz_profile", username);
+    dbKey = CryptoJS.SHA256(username + "_dbkey").toString();
+    document.getElementById("profileName").textContent = username;
+    document.getElementById("editNameInput").value = username;
+    document.getElementById("profileId").textContent = "ID: " + phoneId;
+    document.getElementById("screen-first").style.display = "none"; switchTab("chats");
+    fetch(API+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CHAT,text:encrypt("USER:"+username+":"+phoneId,"userdb")})}).catch(e=>{});
+}
+
+function switchTab(tab) {
+    ["screen-first","screen-chats","screen-contacts","screen-profile"].forEach(id => document.getElementById(id).style.display = "none");
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    if(tab === 'chats') { document.getElementById("screen-chats").style.display = "flex"; document.querySelectorAll('.tab')[0].classList.add('active'); }
+    if(tab === 'contacts') { document.getElementById("screen-contacts").style.display = "flex"; document.querySelectorAll('.tab')[1].classList.add('active'); loadContacts(); }
+    if(tab === 'profile') { document.getElementById("screen-profile").style.display = "flex"; document.querySelectorAll('.tab')[2].classList.add('active'); }
+}
+
+function xorEncrypt(text, key) { let r=""; key=key.repeat(Math.ceil(text.length/key.length)); for(let i=0;i<text.length;i++) r+=String.fromCharCode(text.charCodeAt(i)^key.charCodeAt(i)); return r; }
+function encrypt(text, password) { let h=CryptoJS.SHA256(password).toString(); return "CZ:"+CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(xorEncrypt(text,h))); }
+function decrypt(text, password) { if(!text||!text.startsWith("CZ:")) return null; try { let h=CryptoJS.SHA256(password).toString(); return xorEncrypt(CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Base64.parse(text.slice(3))),h); } catch(e) { return null; } }
+
+let allContacts = {};
+async function loadContacts() {
+    let div = document.getElementById("contactsList");
+    div.innerHTML = '<p class="text-gray text-center">Загрузка...</p>'; allContacts = {};
+    try { let r = await fetch(API+"/getUpdates?limit=100&timeout=3"); let d = await r.json();
+        if(d&&d.ok&&d.result) for(let u of d.result) if(u.channel_post&&u.channel_post.text) { let dec=decrypt(u.channel_post.text,"userdb"); if(dec&&dec.startsWith("USER:")) { let p=dec.split(":"); if(p.length>=3) allContacts[p[2]]=p[1]; } }
+    } catch(e) {}
+    let colors=["#1a5faa","#1a8a3f","#c5781a","#6a1a8a"], html="", i=0;
+    for(let uid in allContacts) { let un=allContacts[uid], isOnline = onlineUsers[uid] && (Date.now() - onlineUsers[uid] < 30000); html+=`<div class="chat-row" onclick="writeToUser('${un}')"><div class="avatar" style="background:${colors[i%4]}">${un[0].toUpperCase()}</div><div class="chat-info"><b>${un}</b> ${isOnline?'<span class="online-dot"></span>':''}<p class="text-gray">ID: ${uid.slice(0,10)}</p></div></div>`; i++; }
+    div.innerHTML = html || '<p class="text-gray text-center">Нет контактов</p>';
+}
+
+function writeToUser(uname) { let chats=JSON.parse(localStorage.getItem("chatz_chats")||"{}"); chats["@"+uname]="chat_"+phoneId; localStorage.setItem("chatz_chats",JSON.stringify(chats)); openChat("@"+uname); }
+
+function showPopup() { document.getElementById("popup").style.display = "block"; document.body.style.overflow = "hidden"; setTimeout(function() { let inp = document.getElementById("popupGid"); inp.focus(); inp.click(); }, 500); }
+function hidePopup() { document.getElementById("popup").style.display = "none"; document.body.style.overflow = ""; }
+
+function addGroup() {
+    let g = document.getElementById("popupGid").value.trim();
+    let p = document.getElementById("popupPw").value.trim();
+    if(!g || !p) return;
+    let chats = JSON.parse(localStorage.getItem("chatz_chats") || "{}");
+    if(chats[g]) { alert(chats[g] === p ? "✅ Уже добавлено!" : "❌ Неверный пароль!"); hidePopup(); return; }
+    chats[g] = p; localStorage.setItem("chatz_chats", JSON.stringify(chats)); refreshChatList();
+    document.getElementById("popupGid").value = ""; document.getElementById("popupPw").value = ""; hidePopup();
+}
+
+function refreshChatList() { let chats=JSON.parse(localStorage.getItem("chatz_chats")||"{}"), html=""; for(let gid in chats) html+=`<div class="chat-row" onclick="openChat('${gid}')"><div class="avatar" style="background:var(--blue)">${gid[0].toUpperCase()}</div><div class="chat-info"><b>${gid}</b></div></div>`; document.getElementById("chatList").innerHTML=html||'<p class="text-gray text-center">Нет групп</p>'; }
+
+function openChat(g) { let chats=JSON.parse(localStorage.getItem("chatz_chats")||"{}"); if(!chats[g]) { alert("Группа не найдена!"); return; } gid=g; pw=chats[g]; hideAll(); document.getElementById("screen-chat").style.display="flex"; document.getElementById("chatTitle").textContent=gid; loadLocalMessages(); if(loadInterval) clearInterval(loadInterval); loadInterval=setInterval(loadLocalMessages, 2000); }
+function hideAll() { ["screen-first","screen-chats","screen-contacts","screen-profile","screen-chat"].forEach(id=>document.getElementById(id).style.display="none"); }
+function backToChats() { clearInterval(loadInterval); hideAll(); switchTab("chats"); }
+
+function replyToMessage(text, sender) { replyTo = {text: text, sender: sender}; document.getElementById("replyPreview").style.display = "block"; document.getElementById("replyText").textContent = "↩ " + sender + ": " + text.slice(0, 50); document.getElementById("msgInput").focus(); }
+function cancelReply() { replyTo = null; document.getElementById("replyPreview").style.display = "none"; }
+
+function getLocalMessages() { return JSON.parse(localStorage.getItem("chatz_msgs_"+gid) || "[]"); }
+function saveLocalMessages(msgs) { localStorage.setItem("chatz_msgs_"+gid, JSON.stringify(msgs.slice(-200))); }
+
+function loadLocalMessages() {
+    let msgs = getLocalMessages(); let html = "";
+    for(let i = 0; i < msgs.length; i++) {
+        let m = msgs[i];
+        let replyHtml = m.replyTo ? `<div style="font-size:11px;color:var(--gray);border-left:2px solid var(--blue);padding-left:8px;margin-bottom:4px;">↩ ${m.replyTo.sender}: ${m.replyTo.text.slice(0, 40)}</div>` : "";
+        if(m.photo) html += `<div class="msg" onclick="replyToMessage('📷 Фото','${m.sender||''}')">${replyHtml}${m.sender||""}:<br><img src="${m.photo}" onerror="this.style.display='none'"><br><span class="time">${m.time}</span></div>`;
+        else html += `<div class="msg" onclick="replyToMessage('${m.text.replace(/'/g,"\\'")}','${m.sender||''}')">${replyHtml}${m.text}<br><span class="time">${m.time}</span></div>`;
+    }
+    document.getElementById("messages").innerHTML = html || "Нет сообщений";
+    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+}
+
+async function sendMsg() {
+    let text = document.getElementById("msgInput").value.trim(); if(!text) return;
+    let fullText = username + ": " + text;
+    let encrypted = encrypt(fullText, pw);
+    document.getElementById("msgInput").value = "";
+    let msgs = getLocalMessages();
+    let msgObj = {text: fullText, sender: username, time: new Date().toLocaleTimeString()};
+    if(replyTo) { msgObj.replyTo = replyTo; cancelReply(); }
+    msgs.push(msgObj); saveLocalMessages(msgs); loadLocalMessages();
+    try { await fetch(API+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CHAT,text:encrypted})}); } catch(e) {}
+    if(navigator.vibrate) navigator.vibrate(50);
+}
+
+function sendPhoto() {
+    let input = document.createElement("input"); input.type = "file"; input.accept = "image/*";
+    input.onchange = function() {
+        let file = input.files[0]; if(!file) return;
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let msgs = getLocalMessages(); msgs.push({text: "", photo: e.target.result, sender: username, time: new Date().toLocaleTimeString()});
+            saveLocalMessages(msgs); loadLocalMessages();
+        };
+        reader.readAsDataURL(file);
+        let caption = encrypt(username + ": [Фото]", pw);
+        fetch(API+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CHAT,text:caption})}).catch(e=>{});
+    };
+    input.click();
+}
+</script>
+</body>
+</html>
