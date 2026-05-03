@@ -1,0 +1,24 @@
+{
+  "name": "ChatZ",
+  "short_name": "ChatZ",
+  "description": "Защищённый мессенджер",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0f1d33",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://ui-avatars.com/api/?name=Z&size=192&background=0a1628&color=f5c542&bold=true",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://ui-avatars.com/api/?name=Z&size=512&background=0a1628&color=f5c542&bold=true",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
